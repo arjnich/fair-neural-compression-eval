@@ -29,7 +29,7 @@ def perform_inference(model, testloader, device):
 
     print("Test Loss ", test_loss/len(testloader))
     print("Test Accuracies", test_accuracies/len(testloader.dataset))
-
+    
 if __name__ == "__main__":
     
     try:
