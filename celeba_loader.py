@@ -35,7 +35,7 @@ class CelebA(Dataset):
 
 
 
-def create_dataloaders(img_path, attr_path, batch_size, train_test_ratio, png = False, seed=42):
+def create_dataloaders(img_path, attr_path, batch_size, train_test_ratio, png=False, seed=42):
 
     tfs = transformsv2.Compose([transformsv2.Resize((CELEBA_HEIGHT, CELEBA_WIDTH)), transformsv2.ToDtype(torch.float32, scale=True)])
 
