@@ -1,24 +1,23 @@
 import os
 import torch
+import numpy as np
+import pandas as pd
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader, random_split
 from torchvision.io import read_image
 import torchvision.transforms.v2 as transformsv2
 
-LINE_PADDING = 2
-CELEBA_HEIGHT = 224
-CELEBA_WIDTH = 224
+RESNET18_HEIGHT = 224
+RESNET18_WIDTH = 224
 
-
-class CelebA(Dataset):
+class RFW(Dataset):
 
     def __init__(self, img_path, attr_path, transforms, png):
+
+        self.attr = pd.read_csv(attr_path).to_numpy()
         self.img_path = img_path
-        attr_table = open(attr_path).readlines()[LINE_PADDING:]
-        self.attr = [row.split() for row in attr_table]
         self.transforms = transforms
         self.png = png
-        #self.idx = self.attr[:]
 
     def __len__(self):
         return len(self.attr)
@@ -26,19 +25,19 @@ class CelebA(Dataset):
     def __getitem__(self, idx):
 
         if self.png:
-            img =  read_image(os.path.join(self.img_path, self.attr[idx][0].replace("jpg", "png")))
+            img =  read_image(os.path.join(self.img_path, self.attr[idx][2], self.attr[idx][1]))
         else:
-            img =  read_image(os.path.join(self.img_path, self.attr[idx][0]))
-        return self.transforms(img), torch.tensor([(int(val) + 1) /2 for val in self.attr[idx][1:]]) # Optimize this?
+            img =  read_image(os.path.join(self.img_path, self.attr[idx][2], self.attr[idx][1].replace("png", "jpg")))
+        return self.transforms(img), torch.from_numpy(self.attr[idx][3:].astype(np.float32))
 
 
 
-def create_dataloaders(img_path, attr_path, batch_size, train_test_ratio, png=False, seed=42):
+def create_dataloaders(img_path, attr_path, batch_size, train_test_ratio, png=True, seed=42):
 
-    tfs = transformsv2.Compose([transformsv2.Resize((CELEBA_HEIGHT, CELEBA_WIDTH)), transformsv2.ToDtype(torch.float32, scale=True)])
+    tfs = transformsv2.Compose([transformsv2.Resize((RESNET18_HEIGHT, RESNET18_WIDTH)), transformsv2.ToDtype(torch.float32, scale=True)])
 
     # Create Dataset
-    data = CelebA(img_path, attr_path, tfs, png)
+    data = RFW(img_path, attr_path, tfs, png)
 
     generator = torch.Generator().manual_seed(seed)
 
