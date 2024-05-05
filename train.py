@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from celeba_loader import *
 from datetime import datetime
+from tqdm import tqdm
 
 
 def train(epochs, lr, trainloader, device):
@@ -30,23 +31,22 @@ def train(epochs, lr, trainloader, device):
 
     for epoch in range(epochs):
         running_loss = 0.0
-        for i, data in enumerate(trainloader):
+        with tqdm(trainloader, desc=f"Epoch {epoch+1}/{epochs}", unit="batch") as t:
+            for i, data in enumerate(t):
 
-            inputs,labels = data
+                inputs,labels = data
 
-            inputs = inputs.to(device)
-            labels = labels.to(device)
-            outputs = model(inputs)
-            #print(outputs)
-            
-            loss = criterion(outputs, labels)
-            loss.backward()
-            optim.step()
+                inputs = inputs.to(device)
+                labels = labels.to(device)
+                outputs = model(inputs)
+                #print(outputs)
+                
+                loss = criterion(outputs, labels)
+                loss.backward()
+                optim.step()
 
-            running_loss += loss.item()
-            if i % 500 == 499:    # print every 2000 mini-batches
-                print(f'[{epoch + 1}, {i + 1:5d}] loss: {running_loss / 500:.3f}')
-                running_loss = 0.0
+                running_loss += loss.item()
+                t.set_postfix(loss=running_loss / (i + 1))
 
     return model
 
