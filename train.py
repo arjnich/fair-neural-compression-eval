@@ -17,7 +17,8 @@ def train(epochs, lr, trainloader, device):
     model = torch.hub.load('pytorch/vision:v0.10.0', 'resnet18', pretrained=True)
 
     # Modify the fc layer
-    model.fc = nn.Linear(model.fc.in_features ,40)
+    output_dim = next(iter(trainloader))[1].shape[1]
+    model.fc = nn.Linear(model.fc.in_features, output_dim)
 
     ## Add sigmoid layer TODO: Check if this is correct
     model = nn.Sequential(model, nn.Sigmoid())
