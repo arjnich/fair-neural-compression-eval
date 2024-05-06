@@ -8,6 +8,7 @@ def perform_inference(model, testloader, device):
     device = torch.device(f'cuda:{device}' if torch.cuda.is_available() else 'cpu')
     criterion = nn.BCELoss()
 
+    model.eval()
     with torch.no_grad():
         test_loss = 0.0
         test_accuracies = torch.zeros(40).to(device)

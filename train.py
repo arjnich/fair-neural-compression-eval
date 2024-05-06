@@ -34,7 +34,7 @@ def train(epochs, lr, trainloader, device):
         with tqdm(trainloader, desc=f"Epoch {epoch+1}/{epochs}", unit="batch") as t:
             for i, data in enumerate(t):
 
-                inputs,labels = data
+                inputs,labels, race = data
 
                 inputs = inputs.to(device)
                 labels = labels.to(device)

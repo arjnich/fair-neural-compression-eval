@@ -28,7 +28,7 @@ class RFW(Dataset):
             img =  read_image(os.path.join(self.img_path, self.attr[idx][2], self.attr[idx][1]))
         else:
             img =  read_image(os.path.join(self.img_path, self.attr[idx][2], self.attr[idx][1].replace("png", "jpg")))
-        return self.transforms(img), torch.from_numpy(self.attr[idx][3:].astype(np.float32))
+        return self.transforms(img), torch.from_numpy(self.attr[idx][3:].astype(np.float32)), self.attr[idx][2].split("/")[0]
 
 
 
