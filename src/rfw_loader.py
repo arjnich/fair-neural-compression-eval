@@ -46,7 +46,7 @@ def create_dataloaders(img_path, attr_path, batch_size, train_test_ratio, png=Tr
 
     trainset, testset = random_split(data, [trainset_size, testset_size], generator)
 
-    trainloader = DataLoader(trainset, batch_size)
+    trainloader = DataLoader(trainset, batch_size, shuffle=True)
     testloader = DataLoader(testset, batch_size)
 
 
