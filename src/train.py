@@ -5,7 +5,7 @@ from datetime import datetime
 from tqdm import tqdm
 
 
-def train(epochs, lr, trainloader, device):
+def train(epochs, lr, trainloader, device, rfw=False):
 
     num_workers = 4
 
@@ -34,7 +34,10 @@ def train(epochs, lr, trainloader, device):
         with tqdm(trainloader, desc=f"Epoch {epoch+1}/{epochs}", unit="batch") as t:
             for i, data in enumerate(t):
 
-                inputs,labels, race = data
+                if rfw:
+                    inputs,labels, race = data
+                else:
+                    inputs,labels = data
 
                 inputs = inputs.to(device)
                 labels = labels.to(device)
