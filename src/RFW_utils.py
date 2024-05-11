@@ -1,0 +1,76 @@
+import torch
+from tqdm import tqdm
+import numpy as np
+from latent_utils import get_latent
+
+
+def save_race_based_predictions_latent(
+        nc_model,
+        n_keep,
+        model, 
+        model_name, 
+        dataloader, 
+        device, 
+        prediction_save_dir,
+        save_labels=False
+    ):
+    all_predictions = {'Indian': {head: torch.tensor([]) for head in model.heads.keys()}, 
+                       'Caucasian': {head: torch.tensor([]) for head in model.heads.keys()}, 
+                       'Asian': {head: torch.tensor([]) for head in model.heads.keys()},  
+                       'African': {head: torch.tensor([]) for head in model.heads.keys()}}
+    all_labels = {'Indian': {head: torch.tensor([]) for head in model.heads.keys()}, 
+                  'Caucasian': {head: torch.tensor([]) for head in model.heads.keys()}, 
+                  'Asian': {head: torch.tensor([]) for head in model.heads.keys()}, 
+                  'African': {head: torch.tensor([]) for head in model.heads.keys()}}
+    
+    print(f'prediction_save_dir: {prediction_save_dir}')
+    dataloader = tqdm(dataloader, desc="Getting Predictions", unit="batch")
+    model.eval()
+    with torch.no_grad():
+        for _, data in enumerate(dataloader):
+            inputs, labels, race = data
+            race = np.array(race)
+
+            latents = get_latent(inputs, nc_model, device, n_keep=n_keep)
+            # inputs = inputs.to(device)
+            labels = labels.to(device)
+            outputs = model(latents)
+
+            for i, (head, predictions) in enumerate(outputs.items()):
+                head_preds = predictions.argmax(dim=1).cpu()
+
+                for race_label in all_labels:
+                    race_indices = np.array((race == race_label).nonzero()[0])
+                    race_predictions = head_preds[race_indices]
+                    race_labels = labels[:, i][race_indices]
+                
+                    all_predictions[race_label][head] = torch.cat((all_predictions[race_label][head], race_predictions.to('cpu')), dim=0)
+                    all_labels[race_label][head] = torch.cat((all_labels[race_label][head], race_labels.to('cpu')), dim=0)
+
+    for race_label in all_labels:
+        for category in all_labels[race_label]:
+            torch.save(all_predictions[race_label][category], f'{prediction_save_dir}/{model_name}_{race_label}_{category}_predictions.pt')
+            if save_labels:
+                torch.save(all_labels[race_label][category], f'{prediction_save_dir}/{model_name}_{race_label}_{category}_labels.pt')
+
+    return all_predictions, all_labels
+
+
+def load_predictions(
+        model, 
+        model_name,
+        prediction_save_dir
+):
+    all_predictions = {'Indian': {head: torch.tensor([]) for head in model.heads.keys()}, 
+                    'Caucasian': {head: torch.tensor([]) for head in model.heads.keys()}, 
+                    'Asian': {head: torch.tensor([]) for head in model.heads.keys()},  
+                    'African': {head: torch.tensor([]) for head in model.heads.keys()}}
+    all_labels = {'Indian': {head: torch.tensor([]) for head in model.heads.keys()}, 
+                  'Caucasian': {head: torch.tensor([]) for head in model.heads.keys()}, 
+                  'Asian': {head: torch.tensor([]) for head in model.heads.keys()}, 
+                  'African': {head: torch.tensor([]) for head in model.heads.keys()}}
+    for race_label in all_labels:
+        for category in all_labels[race_label]:
+            all_predictions[race_label][category] = torch.load(f'{prediction_save_dir}/{model_name}_{race_label}_{category}_predictions.pt')
+    
+    return all_predictions
