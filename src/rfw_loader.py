@@ -32,9 +32,12 @@ class RFW(Dataset):
 
 
 
-def create_dataloaders(img_path, attr_path, batch_size, train_test_ratio, png=True, seed=42):
+def create_dataloaders(img_path, attr_path, batch_size, train_test_ratio=0.7, png=True, seed=42):
 
-    tfs = transformsv2.Compose([transformsv2.Resize((RESNET18_HEIGHT, RESNET18_WIDTH)), transformsv2.ToDtype(torch.float32, scale=True)])
+    tfs = transformsv2.Compose([
+        transformsv2.Resize((RESNET18_HEIGHT, RESNET18_WIDTH)),
+        transformsv2.ToTensor()
+    ])
 
     # Create Dataset
     data = RFW(img_path, attr_path, tfs, png)
@@ -42,12 +45,14 @@ def create_dataloaders(img_path, attr_path, batch_size, train_test_ratio, png=Tr
     generator = torch.Generator().manual_seed(seed)
 
     trainset_size = int(len(data) * train_test_ratio)
-    testset_size = len(data) - trainset_size
+    validaset_size = int((len(data) - trainset_size) * 0.5)
+    testset_size = len(data) - trainset_size - validaset_size
 
-    trainset, testset = random_split(data, [trainset_size, testset_size], generator)
+    trainset, valset, testset = random_split(data, [trainset_size, validaset_size, testset_size], generator)
 
+    # Create data loaders
     trainloader = DataLoader(trainset, batch_size, shuffle=True)
+    valloader = DataLoader(valset, batch_size)
     testloader = DataLoader(testset, batch_size)
 
-
-    return trainloader, testloader
+    return trainloader, valloader, testloader

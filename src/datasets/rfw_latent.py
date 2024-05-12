@@ -10,7 +10,9 @@ import torchvision.transforms.functional as tvf
 import torch.nn.functional as F
 import torch.nn as nn
 import sys
-sys.path.append('/home/tianqiu/NeuralCompression/lossy-vae')
+# sys.path.append('/home/tianqiu/NeuralCompression/lossy-vae') # Tian
+sys.path.append('/home/rasta/lossy-vae')
+
 from lvae import get_model
 from lvae.models.qresvae import zoo
 

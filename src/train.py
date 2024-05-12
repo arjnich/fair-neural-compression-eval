@@ -5,7 +5,7 @@ from datetime import datetime
 from tqdm import tqdm
 
 
-def train(epochs, lr, trainloader, device):
+def train(epochs, lr, trainloader, device, rfw=False):
 
     num_workers = 4
 
@@ -34,7 +34,10 @@ def train(epochs, lr, trainloader, device):
         with tqdm(trainloader, desc=f"Epoch {epoch+1}/{epochs}", unit="batch") as t:
             for i, data in enumerate(t):
 
-                inputs,labels, race = data
+                if rfw:
+                    inputs,labels, race = data
+                else:
+                    inputs,labels = data
 
                 inputs = inputs.to(device)
                 labels = labels.to(device)
@@ -50,6 +53,27 @@ def train(epochs, lr, trainloader, device):
 
     return model
 
+def train_numerical_rfw(model, num_epochs, lr, train_loader, device):
+    criterion = nn.CrossEntropyLoss()
+    optimizer = torch.optim.SGD(model.parameters(), lr=lr)
+    for epoch in range(num_epochs):
+        running_loss = 0.0
+        with tqdm(total=len(train_loader), desc=f"Epoch {epoch+1}/{num_epochs}") as pbar:
+            for inputs, targets, races in train_loader:
+                inputs, targets = inputs.to(device), targets.to(device)
+                optimizer.zero_grad()
+                outputs = model(inputs)
+                loss = 0
+                for i, head in enumerate(outputs):
+                    loss += criterion(outputs[head], targets[:, i].to(torch.int64))
+                loss.backward()
+                optimizer.step()
+                running_loss += loss.item() * inputs.size(0)
+                avg_loss = running_loss / ((pbar.n + 1) * len(inputs))  # Compute average loss
+                pbar.set_postfix(loss=avg_loss)
+                pbar.update(1)
+    return model
+
 def write_model(model, path):
     # TODO: Check if a model already exists to avoid overwriting the model
 
@@ -57,10 +81,13 @@ def write_model(model, path):
     torch.save(model.state_dict(), path)
     print("Model Saved")
 
-def save_model(model, dir_path, model_name):
-    current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    os.makedirs(dir_path, exist_ok=True)
-    filename = f"{dir_path}/{model_name}_{current_time}.pth"
+def save_model(model, dir_path, model_name, with_time=False):
+    if with_time:
+        current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        os.makedirs(dir_path, exist_ok=True)
+        filename = f"{dir_path}/{model_name}_{current_time}.pth"
+    else:
+        filename = f"{dir_path}/{model_name}.pth"
     print("Writing Model")
     torch.save(model, filename)
     print("Model Saved")
