@@ -69,5 +69,5 @@ def train_numerical_rfw(num_epochs, lr, train_loader, device):
 
 
 LEARNING_RATE = 0.01
-model = train_numerical_rfw(100, LEARNING_RATE, image_dl_train, device)
-save_model(model, '../models', 'latent_RFW_numerical_all_labels_resnet18')
+model = train_numerical_rfw(500, LEARNING_RATE, image_dl_train, device)
+save_model(model, '../models', 'latent_RFW_numerical_all_labels_resnet18_retrain_n_keep_12')

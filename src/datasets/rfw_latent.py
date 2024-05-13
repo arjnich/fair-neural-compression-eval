@@ -10,14 +10,15 @@ import torchvision.transforms.functional as tvf
 import torch.nn.functional as F
 import torch.nn as nn
 import sys
-# sys.path.append('/home/tianqiu/NeuralCompression/lossy-vae') # Tian
-sys.path.append('/home/rasta/lossy-vae')
+sys.path.append('/home/tianqiu/NeuralCompression/lossy-vae') # Tian
+# sys.path.append('/home/rasta/lossy-vae')
 
 from lvae import get_model
 from lvae.models.qresvae import zoo
 
 
 class RFW_raw(Dataset):
+    # loads RFW images and convert to tensor
 
     def __init__(self, img_path, attr_path):
 
@@ -34,6 +35,7 @@ class RFW_raw(Dataset):
         return self.transforms(img), torch.from_numpy(self.attr[idx][3:].astype(np.float32)), self.attr[idx][2].split("/")[0]
     
 class RFW_latent(Dataset):
+    # loads RFW images and convert to 12-block latents. Not used. 
 
     def __init__(self, img_path, attr_path, nc_model, device):
 
@@ -61,15 +63,17 @@ class RFW_latent(Dataset):
         return output, torch.from_numpy(self.attr[idx][3:].astype(np.float32)), self.attr[idx][2].split("/")[0]
 
 
-def create_dataloaders(dataset, batch_size, train_test_ratio, seed=42):
+def create_dataloaders(dataset, batch_size, train_test_ratio=0.7, seed=42):
     # Create Dataset
     generator = torch.Generator().manual_seed(seed)
     trainset_size = int(len(dataset) * train_test_ratio)
-    testset_size = len(dataset) - trainset_size
+    validaset_size = int((len(dataset) - trainset_size) * 0.5)
+    testset_size = len(dataset) - trainset_size - validaset_size
 
-    trainset, testset = random_split(dataset, [trainset_size, testset_size], generator)
+    trainset, valset, testset = random_split(dataset, [trainset_size, validaset_size, testset_size], generator)
 
-    trainloader = DataLoader(trainset, batch_size)
+    trainloader = DataLoader(trainset, batch_size, shuffle=True)
+    valloader = DataLoader(valset, batch_size)
     testloader = DataLoader(testset, batch_size)
 
-    return trainloader, testloader
+    return trainloader, valloader, testloader
