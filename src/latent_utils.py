@@ -108,4 +108,4 @@ def train_numerical_rfw_latents(
                 print(f"Early stopping at epoch {epoch+1}")
                 break
 
-    return model, train_losses, valid_losses
+    return model, epoch+1, train_losses, valid_losses
