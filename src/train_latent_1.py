@@ -15,7 +15,6 @@ sys.path.append('/home/tianqiu/NeuralCompression/lossy-vae')
 from lvae import get_model
 from lvae.models.qresvae import zoo
 
-RATIO = 0.8
 BATCH_SIZE = 1024
 device = 'cuda'
 # load pre-trained qres model
@@ -27,7 +26,7 @@ nc_model = get_model(model_name, lmb_value, pretrained=True).to(device) # weight
 RFW_IMAGES_DIR =  "/media/global_data/fair_neural_compression_data/datasets/RFW/data_64"
 RFW_LABELS_DIR = "/media/global_data/fair_neural_compression_data/datasets/RFW/clean_metadata/numerical_labels.csv"
 image_ds = RFW_raw(RFW_IMAGES_DIR, RFW_LABELS_DIR)
-image_dl_train, image_dl_val, image_dl_test = create_dataloaders(image_ds, BATCH_SIZE, RATIO)
+image_dl_train, image_dl_val, image_dl_test = create_dataloaders(image_ds, BATCH_SIZE)
 # latent_ds = RFW_latent(RFW_IMAGES_DIR, RFW_LABELS_DIR, nc_model, device)
 # latent_dl_train, latent_dl_test = create_dataloaders(latent_ds, BATCH_SIZE, RATIO)
 

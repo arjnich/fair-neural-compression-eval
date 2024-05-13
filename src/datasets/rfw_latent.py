@@ -10,14 +10,15 @@ import torchvision.transforms.functional as tvf
 import torch.nn.functional as F
 import torch.nn as nn
 import sys
-# sys.path.append('/home/tianqiu/NeuralCompression/lossy-vae') # Tian
-sys.path.append('/home/rasta/lossy-vae')
+sys.path.append('/home/tianqiu/NeuralCompression/lossy-vae') # Tian
+# sys.path.append('/home/rasta/lossy-vae')
 
 from lvae import get_model
 from lvae.models.qresvae import zoo
 
 
 class RFW_raw(Dataset):
+    # loads RFW images and convert to tensor
 
     def __init__(self, img_path, attr_path):
 
@@ -34,6 +35,7 @@ class RFW_raw(Dataset):
         return self.transforms(img), torch.from_numpy(self.attr[idx][3:].astype(np.float32)), self.attr[idx][2].split("/")[0]
     
 class RFW_latent(Dataset):
+    # loads RFW images and convert to 12-block latents. Not used. 
 
     def __init__(self, img_path, attr_path, nc_model, device):
 
