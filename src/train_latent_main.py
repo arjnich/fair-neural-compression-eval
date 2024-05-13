@@ -20,6 +20,7 @@ from lvae.models.qresvae import zoo
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--n_keep',  type=int,  default=12)
+    parser.add_argument('--use_pretrained', action='store_true', default=False)
     cfg = parser.parse_args()
     assert cfg.n_keep in [1,3,6,9,12], 'n_keep value not accepted'
     return cfg
@@ -50,25 +51,33 @@ def main():
         'hair_color': 5
     }
     n_keep = cfg.n_keep
+    experiment_tag=f'latent_n_keep_{n_keep}'
     if n_keep == 12:
-        model = MultiHeadResNet(output_dims, use_pretrained=True).to(device)
+        model = MultiHeadResNet(output_dims, use_pretrained=cfg.use_pretrained).to(device)
+        if cfg.use_pretrained:
+            experiment_tag = experiment_tag + '_use_pretrained'
+        else:
+            experiment_tag = experiment_tag + '_no_pretrained'
     elif n_keep == 3:
         model = LatentMultiHead_3(output_dims).to(device)
     elif n_keep == 6:
         model = LatentMultiHead_6(output_dims).to(device)
     elif n_keep == 9:
-        model = LatentMultiHead_9(output_dims, use_pretrained=True).to(device)
+        model = LatentMultiHead_9(output_dims, use_pretrained=cfg.use_pretrained).to(device)
+        if cfg.use_pretrained:
+            experiment_tag = experiment_tag + '_use_pretrained'
+        else:
+            experiment_tag = experiment_tag + '_no_pretrained'
     elif n_keep ==1:
         model = LatentMultiHead_1(output_dims).to(device)
 
 
 
     LEARNING_RATE = 0.01
-    experiment_tag=f'latent_n_keep_{n_keep}'
     print(experiment_tag)
     writer = SummaryWriter(f'runs/{experiment_tag}')# initialize a writer
-    model, train_losses, val_losses,  = train_numerical_rfw_latents(nc_model, model, 500, LEARNING_RATE, image_dl_train, image_dl_val, device, n_keep, writer, patience=5)
-    save_model(model, '../models', f'latent_RFW_numerical_all_labels_n_keep_{n_keep}_with_val', with_time=False)
+    model, ending_epoch, train_losses, val_losses,  = train_numerical_rfw_latents(nc_model, model, 500, LEARNING_RATE, image_dl_train, image_dl_val, device, n_keep, writer, patience=5)
+    save_model(model, '../models', f'latent_RFW_{experiment_tag}_epoch_{ending_epoch}', with_time=False)
 
 if __name__ == "__main__":
     main()
