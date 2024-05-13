@@ -6,6 +6,20 @@ from latent_utils import get_latent
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
 
+def initialize_rfw_prediction_results():
+    phenotype_list = ['skin_type', 'eye_type', 'nose_type', 'lip_type', 'hair_type', 'hair_color']
+    # create empty dictionaries for prediction results
+    all_predictions = {'Indian': {head: torch.tensor([]) for head in phenotype_list}, 
+                       'Caucasian': {head: torch.tensor([]) for head in phenotype_list}, 
+                       'Asian': {head: torch.tensor([]) for head in phenotype_list},  
+                       'African': {head: torch.tensor([]) for head in phenotype_list}}
+    all_labels = {'Indian': {head: torch.tensor([]) for head in phenotype_list}, 
+                  'Caucasian': {head: torch.tensor([]) for head in phenotype_list}, 
+                  'Asian': {head: torch.tensor([]) for head in phenotype_list}, 
+                  'African': {head: torch.tensor([]) for head in phenotype_list}}
+
+    return all_predictions, all_labels
+
 def save_race_based_predictions_latent(
         nc_model,
         n_keep,
@@ -16,14 +30,7 @@ def save_race_based_predictions_latent(
         prediction_save_dir,
         save_labels=False
     ):
-    all_predictions = {'Indian': {head: torch.tensor([]) for head in model.heads.keys()}, 
-                       'Caucasian': {head: torch.tensor([]) for head in model.heads.keys()}, 
-                       'Asian': {head: torch.tensor([]) for head in model.heads.keys()},  
-                       'African': {head: torch.tensor([]) for head in model.heads.keys()}}
-    all_labels = {'Indian': {head: torch.tensor([]) for head in model.heads.keys()}, 
-                  'Caucasian': {head: torch.tensor([]) for head in model.heads.keys()}, 
-                  'Asian': {head: torch.tensor([]) for head in model.heads.keys()}, 
-                  'African': {head: torch.tensor([]) for head in model.heads.keys()}}
+    all_predictions, all_labels = initialize_rfw_prediction_results()
     
     print(f'prediction_save_dir: {prediction_save_dir}')
     os.makedirs(prediction_save_dir, exist_ok=True)
@@ -66,14 +73,7 @@ def save_race_based_predictions(
         prediction_save_dir,
         save_labels=False
     ):
-    all_predictions = {'Indian': {head: torch.tensor([]) for head in model.heads.keys()}, 
-                       'Caucasian': {head: torch.tensor([]) for head in model.heads.keys()}, 
-                       'Asian': {head: torch.tensor([]) for head in model.heads.keys()},  
-                       'African': {head: torch.tensor([]) for head in model.heads.keys()}}
-    all_labels = {'Indian': {head: torch.tensor([]) for head in model.heads.keys()}, 
-                  'Caucasian': {head: torch.tensor([]) for head in model.heads.keys()}, 
-                  'Asian': {head: torch.tensor([]) for head in model.heads.keys()}, 
-                  'African': {head: torch.tensor([]) for head in model.heads.keys()}}
+    all_predictions, all_labels = initialize_rfw_prediction_results()
     
     print(f'prediction_save_dir: {prediction_save_dir}')
     os.makedirs(prediction_save_dir, exist_ok=True)
@@ -130,16 +130,9 @@ def load_predictions(
         model_name,
         prediction_save_dir
 ):
-    all_predictions = {'Indian': {head: torch.tensor([]) for head in model.heads.keys()}, 
-                    'Caucasian': {head: torch.tensor([]) for head in model.heads.keys()}, 
-                    'Asian': {head: torch.tensor([]) for head in model.heads.keys()},  
-                    'African': {head: torch.tensor([]) for head in model.heads.keys()}}
-    all_labels = {'Indian': {head: torch.tensor([]) for head in model.heads.keys()}, 
-                  'Caucasian': {head: torch.tensor([]) for head in model.heads.keys()}, 
-                  'Asian': {head: torch.tensor([]) for head in model.heads.keys()}, 
-                  'African': {head: torch.tensor([]) for head in model.heads.keys()}}
+    all_predictions, all_labels = initialize_rfw_prediction_results()
     for race_label in all_labels:
         for category in all_labels[race_label]:
             all_predictions[race_label][category] = torch.load(f'{prediction_save_dir}/{model_name}_{race_label}_{category}_predictions.pt')
     
-    return all_predictions
+    return all_predictions, all_labels
