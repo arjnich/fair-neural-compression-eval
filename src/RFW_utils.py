@@ -7,6 +7,7 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 
 
 def initialize_rfw_prediction_results():
+    # output: 2 dictionaries with races as first level of keys, and phenotypes as the next level of keys.
     phenotype_list = ['skin_type', 'eye_type', 'nose_type', 'lip_type', 'hair_type', 'hair_color']
     # create empty dictionaries for prediction results
     all_predictions = {'Indian': {head: torch.tensor([]) for head in phenotype_list}, 
