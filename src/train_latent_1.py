@@ -9,6 +9,7 @@ import torchvision.models as models
 import torch.nn as nn
 from tqdm import tqdm
 import torch.nn.functional as F
+from torch.utils.tensorboard import SummaryWriter
 
 import sys
 sys.path.append('/home/tianqiu/NeuralCompression/lossy-vae')
@@ -27,8 +28,7 @@ RFW_IMAGES_DIR =  "/media/global_data/fair_neural_compression_data/datasets/RFW/
 RFW_LABELS_DIR = "/media/global_data/fair_neural_compression_data/datasets/RFW/clean_metadata/numerical_labels.csv"
 image_ds = RFW_raw(RFW_IMAGES_DIR, RFW_LABELS_DIR)
 image_dl_train, image_dl_val, image_dl_test = create_dataloaders(image_ds, BATCH_SIZE)
-# latent_ds = RFW_latent(RFW_IMAGES_DIR, RFW_LABELS_DIR, nc_model, device)
-# latent_dl_train, latent_dl_test = create_dataloaders(latent_ds, BATCH_SIZE, RATIO)
+
 
 
 output_dims = {
@@ -49,6 +49,7 @@ def train_numerical_rfw(
         train_loader, 
         valid_loader,
         device, 
+        writer,
         patience=5  # Number of epochs to wait for improvement in validation loss before stopping
     ):
     criterion = nn.CrossEntropyLoss()
@@ -81,6 +82,7 @@ def train_numerical_rfw(
                 pbar.update(1)
         print(f'Epoch {i + 1} train loss : {avg_train_loss}')
         train_losses.append(avg_train_loss)
+        writer.add_scalar('Loss/train', loss, epoch)
         # Validation phase
         model.eval()
         running_valid_loss = 0.0
@@ -100,6 +102,7 @@ def train_numerical_rfw(
                     pbar.update(1)
         print(f'Epoch {epoch + 1} valid loss : {avg_valid_loss}')
         valid_losses.append(avg_valid_loss)
+        writer.add_scalar('Loss/val', avg_valid_loss, epoch)
         
         # Check for early stopping
         if avg_valid_loss < best_valid_loss:
@@ -115,5 +118,7 @@ def train_numerical_rfw(
 
 
 LEARNING_RATE = 0.01
-model, train_losses, val_losses,  = train_numerical_rfw(model, 500, LEARNING_RATE, image_dl_train, image_dl_val, device, patience=5)
+experiment_tag='latent_n_keep_1'
+writer = SummaryWriter(f'runs/{experiment_tag}')# initialize a writer
+model, train_losses, val_losses,  = train_numerical_rfw(model, 500, LEARNING_RATE, image_dl_train, image_dl_val, device, writer, patience=5)
 save_model(model, '../models', 'latent_RFW_numerical_all_labels_n_keep_1_with_val', with_time=False)
