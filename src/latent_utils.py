@@ -11,11 +11,26 @@ def get_latent(img, nc_model, device, n_keep=12):
         stats_all = nc_model.forward_get_latents(img)
         latents = [stats_all[latent_block_index]['z'] for latent_block_index in range(12)]
         if n_keep == 12:
+                # output dimension is [19, 32, 32] after PS.
                 output = torch.cat((F.interpolate(latents[0], 4),latents[1], latents[2]), 1)
                 output = torch.cat((F.interpolate(output, 8),latents[3], latents[4],latents[5], latents[6]), 1)
                 output = torch.cat((F.interpolate(output, 16),latents[7], latents[8],latents[9], latents[10], latents[11]), 1)
                 output = ps_layer(output)
+        elif n_keep == 9:
+                # output dimension is [16, 32, 32] after PS.
+                output = torch.cat((F.interpolate(latents[0], 4),latents[1], latents[2]), 1)
+                output = torch.cat((F.interpolate(output, 8),latents[3], latents[4],latents[5], latents[6]), 1)
+                output = torch.cat((F.interpolate(output, 16),latents[7], latents[8]), 1)
+                output = ps_layer(output)
+        elif n_keep == 6:
+                # output dimension is [50, 8, 8]
+                output = torch.cat((F.interpolate(latents[0], 4),latents[1], latents[2]), 1)
+                output = torch.cat((F.interpolate(output, 8),latents[3], latents[4],latents[5]), 1)
+        elif n_keep == 3:
+                # output dimension is [32, 4, 4]
+                output = torch.cat((F.interpolate(latents[0], 4),latents[1], latents[2]), 1)
         elif n_keep == 1:
+                # output dimensino is [16, 1, 1]
                 output = latents[0]
         return output
 
