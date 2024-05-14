@@ -85,7 +85,7 @@ def save_race_based_predictions(
             inputs, labels, race = data
             race = np.array(race)
 
-            inputs = inputs.to(device)
+            inputs = inputs.float().to(device)
             labels = labels.to(device)
             outputs = model(inputs)
 
@@ -127,7 +127,6 @@ def get_classification_report(races, categories, pred_dir, model_name):
     return results
 
 def load_predictions(
-        model, 
         model_name,
         prediction_save_dir
 ):
