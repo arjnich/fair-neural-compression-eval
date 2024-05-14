@@ -109,3 +109,72 @@ def train_numerical_rfw_latents(
                 break
 
     return model, epoch+1, train_losses, valid_losses
+
+def train_numerical_rfw_pseudo_decoder(
+        model, 
+        num_epochs, 
+        lr, 
+        train_loader, 
+        valid_loader,
+        device, 
+        writer,
+        patience=5  # Number of epochs to wait for improvement in validation loss before stopping
+    ):
+    criterion = nn.CrossEntropyLoss()
+    optimizer = torch.optim.SGD(model.parameters(), lr=lr)
+    train_losses = []
+    valid_losses = []
+
+    best_valid_loss = float('inf')
+    no_improvement_count = 0
+
+    for epoch in range(num_epochs):
+        model.train()
+        running_train_loss = 0.0
+        with tqdm(total=len(train_loader), desc=f"Epoch {epoch+1}/{num_epochs}") as pbar:
+            for inputs, targets, races in train_loader:
+                inputs, targets = inputs.to(device), targets.to(device)
+                optimizer.zero_grad()
+                outputs = model(inputs)
+                loss = 0
+                for i, head in enumerate(outputs):
+                    loss += criterion(outputs[head], targets[:, i].to(torch.int64))
+                loss.backward()
+                optimizer.step()
+                running_train_loss += loss.item() * inputs.size(0)
+                avg_train_loss = running_train_loss / ((pbar.n + 1) * len(inputs))  # Compute average loss
+                pbar.set_postfix(loss=avg_train_loss)
+                pbar.update(1)
+        print(f'Epoch {i + 1} train loss : {avg_train_loss}')
+        train_losses.append(avg_train_loss)
+        writer.add_scalar('Loss/train', loss, epoch)
+        # Validation phase
+        model.eval()
+        running_valid_loss = 0.0
+        with torch.no_grad():
+            with tqdm(total=len(valid_loader), desc=f"Epoch {epoch+1}/{num_epochs} - Validation") as pbar:
+                for inputs, targets, races in valid_loader:
+                    inputs, targets = inputs.to(device), targets.to(device)
+                    outputs = model(inputs)
+                    loss = 0
+                    for i, head in enumerate(outputs):
+                        loss += criterion(outputs[head], targets[:, i].to(torch.int64))
+                    running_valid_loss += loss.item() * inputs.size(0)
+                    avg_valid_loss = running_valid_loss / ((pbar.n + 1) * len(inputs))  # Compute average validation loss
+                    pbar.set_postfix(valid_loss=avg_valid_loss)
+                    pbar.update(1)
+        print(f'Epoch {epoch + 1} valid loss : {avg_valid_loss}')
+        valid_losses.append(avg_valid_loss)
+        writer.add_scalar('Loss/val', avg_valid_loss, epoch)
+        
+        # Check for early stopping
+        if avg_valid_loss < best_valid_loss:
+            best_valid_loss = avg_valid_loss
+            no_improvement_count = 0
+        else:
+            no_improvement_count += 1
+            if no_improvement_count >= patience:
+                print(f"Early stopping at epoch {epoch+1}")
+                break
+
+    return model, epoch+1, train_losses, valid_losses
