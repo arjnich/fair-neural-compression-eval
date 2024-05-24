@@ -12,6 +12,7 @@ from torchvision import transforms
 
 
 def get_images(meta_data_inf, path):
+    print(f'Reading images from {path}')
     image_tensors = []
     for meta_data in tqdm(meta_data_inf, total=len(meta_data_inf)):
         file_path = os.path.join(path, meta_data[2], meta_data[1])
@@ -22,11 +23,13 @@ def get_images(meta_data_inf, path):
     image_tensors = torch.stack(image_tensors, dim=0)
     return image_tensors
 
+def update_fid_in_batches(fid, images, bsz=256, real=True):
+    for i in range(0, len(images), bsz):
+        batch = images[i:i + bsz]
+        fid.update(batch, real=real)
+    return fid
+        
 def get_fid(fid, clean_images, generated_images, bsz=256):
-    def update_fid_in_batches(fid, images, bsz=bsz, real=True):
-        for i in range(0, len(images), bsz):
-            batch = images[i:i + bsz]
-            fid.update(batch, real=real)
     update_fid_in_batches(fid, clean_images, bsz=bsz, real=True)
     update_fid_in_batches(fid, generated_images, bsz=bsz, real=False)
     return float(fid.compute())
@@ -44,7 +47,7 @@ def main(args):
         print(f'model_name: {model_name}')
         fid_results[model_name] = {}
         model_dir = f'{input_dir}/{model_name}'
-        if model_name == 'jpeg' or model_name == 'qres17m':
+        if model_name == 'jpeg':
             for quality in os.listdir(model_dir):
                 print(f'\tquality: {quality}')
                 fid = FrechetInceptionDistance().to(device)
@@ -68,14 +71,15 @@ def main(args):
                     fid_results[model_name][dataset_name][quality] = fid_score
     print(fid_results)
     with open(f"{args.output_file_directory}/fid.json", "w") as outfile: 
-        json.dump(fid_results, outfile)
+        json.dump(fid_results, outfile, indent=4)
     
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Save compressed images from trained model")
     parser.add_argument("--device", type=int, default=3, help="GPU device used for compression")
+    parser.add_argument("--bsz", type=int, default=512, help="batch size for feeding the images to the inception model")
     parser.add_argument("--models", nargs='+', type=str, 
-                        default=["qres17m", "mbt2018", "hyperprior", "jpeg", "cheng2020-attn"],
+                        default=["qres17m_lmb_64", "mbt2018", "hyperprior", "jpeg", "cheng2020-attn"],
                         help="model names") #bmshj2018-hyperprior, mbt2018, ...
     parser.add_argument("--datasets", nargs='+', type=str,
                         default=['fairface', 'celebA'], 
