@@ -151,6 +151,7 @@ def train_numerical_rfw(
                     outputs = model(inputs)
                     loss = 0
                     for i, head in enumerate(outputs):
+                        # print(f'head: {head} - race:{np.unique(np.array(races))},  unique hairs: {targets[:, ATTRIBUTE_INDECIES[head]].unique()}')
                         loss += criterion(outputs[head], targets[:, ATTRIBUTE_INDECIES[head]].to(torch.int64))
                     running_valid_loss += loss.item() * inputs.size(0)
                     pbar.update(1)
@@ -171,5 +172,5 @@ def train_numerical_rfw(
             if no_improvement_count >= patience:
                 print(f"Early stopping at epoch {epoch+1}")
                 break
-    
+    model = torch.load(f'{save_dir}/best.pth')
     return model, train_losses, valid_losses
