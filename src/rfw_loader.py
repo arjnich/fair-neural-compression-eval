@@ -18,7 +18,7 @@ class RFW(Dataset):
         self.img_path = img_path
         self.transforms = transforms
         self.png = png
-
+        
     def __len__(self):
         return len(self.attr)
     
@@ -32,7 +32,14 @@ class RFW(Dataset):
 
 
 
-def create_dataloaders(img_path, attr_path, batch_size, train_test_ratio=0.7, png=True, seed=42):
+def create_dataloaders(
+    img_path, 
+    attr_path, 
+    batch_size, 
+    train_test_ratio=0.7, 
+    png=True, 
+    seed=42
+):
 
     tfs = transformsv2.Compose([
         transformsv2.Resize((RESNET18_HEIGHT, RESNET18_WIDTH)),
@@ -51,8 +58,8 @@ def create_dataloaders(img_path, attr_path, batch_size, train_test_ratio=0.7, pn
     trainset, valset, testset = random_split(data, [trainset_size, validaset_size, testset_size], generator)
 
     # Create data loaders
-    trainloader = DataLoader(trainset, batch_size, shuffle=True)
-    valloader = DataLoader(valset, batch_size)
-    testloader = DataLoader(testset, batch_size)
+    train_loader = DataLoader(trainset, batch_size, shuffle=True)
+    val_loader = DataLoader(valset, batch_size)
+    test_loader = DataLoader(testset, batch_size)
 
-    return trainloader, valloader, testloader
+    return train_loader, val_loader, test_loader

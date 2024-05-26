@@ -8,30 +8,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision.models as models
-
+from multi_head_resnet import MultiHeadResNet
 from rfw_loader import create_dataloaders
 
-
-class MultiHeadResNet(nn.Module):
-    def __init__(self, output_dims):
-        super(MultiHeadResNet, self).__init__()
-        self.resnet = models.resnet18(pretrained=True)
-        num_features = self.resnet.fc.in_features
-        self.resnet = torch.nn.Sequential(*(list(self.resnet.children())[:-1]))
-        self.heads = nn.ModuleDict()
-        for head, num_classes in output_dims.items():
-            self.heads[head] = nn.Linear(num_features, num_classes)
-
-    def forward(self, x):
-        features = self.resnet(x).squeeze()
-        outputs = {}
-        for head, head_module in self.heads.items():
-            output_logits = head_module(features)
-            outputs[head] = F.softmax(output_logits, dim=1)
-        return outputs
-
-def create_model(device):
-    output_dims = {
+DEFAULT_OUTPUT_DIMS = {
     'skin_type': 6,
     'eye_type': 2,
     'nose_type': 2,
@@ -40,8 +20,17 @@ def create_model(device):
     'hair_color': 5
     }
 
-    model = MultiHeadResNet(output_dims).to(device)
+ATTRIBUTE_INDECIES = {
+    'skin_type': 0,
+    'lip_type': 1,
+    'nose_type': 2,
+    'eye_type': 3,
+    'hair_type': 4,
+    'hair_color': 5
+}
 
+def create_model(device, output_dims):
+    model = MultiHeadResNet(output_dims).to(device)
     return model
 
 def save_model(model, dir_path, model_name, with_time=False):
@@ -88,7 +77,7 @@ def save_race_based_predictions(
                 for race_label in all_labels:
                     race_indices = np.array((race == race_label).nonzero()[0])
                     race_predictions = head_preds[race_indices]
-                    race_labels = labels[:, i][race_indices]
+                    race_labels = labels[:, ATTRIBUTE_INDECIES[head]][race_indices]
                 
                     all_predictions[race_label][head] = torch.cat((all_predictions[race_label][head], race_predictions.to('cpu')), dim=0)
                     all_labels[race_label][head] = torch.cat((all_labels[race_label][head], race_labels.to('cpu')), dim=0)
@@ -101,15 +90,14 @@ def save_race_based_predictions(
 
     return all_predictions, all_labels
 
-
 def generate_dataloaders(image_path, batch_size, ratio):
     RFW_LABELS_DIR = "/media/global_data/fair_neural_compression_data/datasets/RFW/clean_metadata/numerical_labels.csv"
     return create_dataloaders(
         image_path, 
         RFW_LABELS_DIR, 
         batch_size, 
-        ratio
-        )
+        train_test_ratio=ratio,
+    )
 
 def train_numerical_rfw(
         model, 
@@ -142,7 +130,7 @@ def train_numerical_rfw(
                 outputs = model(inputs)
                 loss = 0
                 for i, head in enumerate(outputs):
-                    loss += criterion(outputs[head], targets[:, i].to(torch.int64))
+                    loss += criterion(outputs[head], targets[:, ATTRIBUTE_INDECIES[head]].to(torch.int64))
                 loss.backward()
                 optimizer.step()
                 running_train_loss += loss.item() * inputs.size(0)
@@ -163,7 +151,7 @@ def train_numerical_rfw(
                     outputs = model(inputs)
                     loss = 0
                     for i, head in enumerate(outputs):
-                        loss += criterion(outputs[head], targets[:, i].to(torch.int64))
+                        loss += criterion(outputs[head], targets[:, ATTRIBUTE_INDECIES[head]].to(torch.int64))
                     running_valid_loss += loss.item() * inputs.size(0)
                     pbar.update(1)
                 avg_valid_loss = running_valid_loss / len(valid_loader.dataset)  # Compute average validation loss

@@ -11,7 +11,9 @@ class MultiHeadResNet(nn.Module):
         num_features = self.resnet.fc.in_features
         self.resnet = torch.nn.Sequential(*(list(self.resnet.children())[:-1]))
         self.heads = nn.ModuleDict()
+        print(f'Creating a multi-head ResNet18 with the following heads:')
         for head, num_classes in output_dims.items():
+            print(f'\to {head}')
             self.heads[head] = nn.Linear(num_features, num_classes)
 
     def forward(self, x):
