@@ -45,44 +45,46 @@ def save_model(model, dir_path, model_name, with_time=False):
     print("Model Saved")
 
 def save_race_based_predictions(
-        model,  
+        models,  
         dataloader, 
         device, 
-        prediction_save_dir
+        prediction_save_dir,
+        attributes
     ):
-    all_predictions = {'Indian': {head: torch.tensor([]) for head in model.heads.keys()}, 
-                       'Caucasian': {head: torch.tensor([]) for head in model.heads.keys()}, 
-                       'Asian': {head: torch.tensor([]) for head in model.heads.keys()},  
-                       'African': {head: torch.tensor([]) for head in model.heads.keys()}}
-    all_labels = {'Indian': {head: torch.tensor([]) for head in model.heads.keys()}, 
-                  'Caucasian': {head: torch.tensor([]) for head in model.heads.keys()}, 
-                  'Asian': {head: torch.tensor([]) for head in model.heads.keys()}, 
-                  'African': {head: torch.tensor([]) for head in model.heads.keys()}}
+    all_predictions = {'Indian': {attr: torch.tensor([]) for attr in attributes}, 
+                       'Caucasian': {attr: torch.tensor([]) for attr in attributes}, 
+                       'Asian': {attr: torch.tensor([]) for attr in attributes},  
+                       'African': {attr: torch.tensor([]) for attr in attributes}}
+    all_labels = {'Indian': {attr: torch.tensor([]) for attr in attributes}, 
+                  'Caucasian': {attr: torch.tensor([]) for attr in attributes}, 
+                  'Asian': {attr: torch.tensor([]) for attr in attributes}, 
+                  'African': {attr: torch.tensor([]) for attr in attributes}}
     
     print(f'prediction_save_dir: {prediction_save_dir}')
     dataloader = tqdm(dataloader, desc="Getting Predictions", unit="batch")
-    model.eval()
     with torch.no_grad():
-        for _, data in enumerate(dataloader):
-            inputs, labels, race = data
-            race = np.array(race)
+        for j, model in enumerate(models):
+            model.eval()
+            for _, data in enumerate(dataloader):
+                inputs, labels, race = data
+                race = np.array(race)
 
-            inputs = inputs.to(torch.float).to(device)
-            labels = labels.to(device)
-            outputs = model(inputs)
+                inputs = inputs.to(torch.float).to(device)
+                labels = labels.to(device)
+                outputs = model(inputs)
 
-            for i, (head, predictions) in enumerate(outputs.items()):
-                head_preds = predictions.argmax(dim=1).cpu()
+                for i, (head, predictions) in enumerate(outputs.items()):
+                    head_preds = predictions.argmax(dim=1).cpu()
 
-                for race_label in all_labels:
-                    race_indices = np.array((race == race_label).nonzero()[0])
-                    race_predictions = head_preds[race_indices]
-                    race_labels = labels[:, ATTRIBUTE_INDECIES[head]][race_indices]
-                
-                    all_predictions[race_label][head] = torch.cat((all_predictions[race_label][head], race_predictions.to('cpu')), dim=0)
-                    all_labels[race_label][head] = torch.cat((all_labels[race_label][head], race_labels.to('cpu')), dim=0)
+                    for race_label in all_labels:
+                        race_indices = np.array((race == race_label).nonzero()[0])
+                        race_predictions = head_preds[race_indices]
+                        race_labels = labels[:, ATTRIBUTE_INDECIES[head]][race_indices]
+                    
+                        all_predictions[race_label][head] = torch.cat((all_predictions[race_label][head], race_predictions.to('cpu')), dim=0)
+                        all_labels[race_label][head] = torch.cat((all_labels[race_label][head], race_labels.to('cpu')), dim=0)
 
-    with open(prediction_save_dir + '/predictions.pkl', 'wb+') as f:
+    with open(prediction_save_dir + '/test.pkl', 'wb+') as f:
         pickle.dump(all_predictions, f)
     #with open(prediction_save_dir + '/labels.pkl', 'wb+') as f:
     #    pickle.dump(all_labels, f)

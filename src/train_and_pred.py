@@ -2,7 +2,7 @@ import sys
 import argparse
 import torch
 
-from train_utils import create_model, generate_dataloaders, train_numerical_rfw, save_model, save_race_based_predictions, MultiHeadResNet
+from train_utils import create_model, generate_dataloaders, train_numerical_rfw, save_model, save_race_based_predictions, MultiHeadResNet, DEFAULT_OUTPUT_DIMS
 
 
 def parse_args(argv):
@@ -101,25 +101,38 @@ def main(argv):  # noqa: C901
 
     train_loader, val_loader, test_loader = generate_dataloaders(args.data_path, args.batch_size, args.ratio)
 
-    model = create_model(args.device)
-
+    ###model = create_model(args.device)
+    models = []
     if(args.train):
         #train
-        print("Training Model")
-        trained_model = train_numerical_rfw(model, torch.optim.SGD, args.epochs, args.learning_rate, train_loader, val_loader, args.device, args.pred_dir, 10)
+        attributes = DEFAULT_OUTPUT_DIMS.keys()
+        print(attributes)
+        for attr in attributes:
+            output_dims = {attr: DEFAULT_OUTPUT_DIMS[attr]}
+            model = create_model(
+                args.device, 
+                output_dims
+                )
+
+            print(f"Training {attr} Model")
+
+            model,_,_ = train_numerical_rfw(model, torch.optim.SGD, args.epochs, args.learning_rate, train_loader, val_loader, args.device, args.pred_dir, 5)
+            models.append(model)
     else:
-        #load
+        # TODO: This needs to be fixed
         print("Loading Model")
-        model = torch.load(args.checkpoint_path)
+        ##print(args.checkpoint_path)
+        model = torch.load(args.checkpoint_path[0])
         model.to(args.device)
     print(args.pred_dir)
 
     save_race_based_predictions(
-            model, 
+            models, 
             test_loader, 
             args.device, 
-            args.pred_dir
-        )
+            args.pred_dir,
+            attributes
+            )
 
 if __name__ == "__main__":
     main(sys.argv[1:])
