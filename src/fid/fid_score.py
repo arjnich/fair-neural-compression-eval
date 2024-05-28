@@ -31,7 +31,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
-import os
+import os, json
 import pathlib
 from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
 
@@ -237,7 +237,8 @@ def calculate_activation_statistics(files, model, batch_size=50, dims=2048,
 def compute_statistics_of_path(path, model, batch_size, dims, device,
                                num_workers=1, save_stats_dir=None):
     if save_stats_dir is not None and os.path.exists(f'{save_stats_dir}/clean_image_stats.npz'):
-        with np.load(path) as f:
+        print(f'Reading clean image stats from previous file: {save_stats_dir}/clean_image_stats.npz ...')
+        with np.load(f'{save_stats_dir}/clean_image_stats.npz') as f:
             m, s = f['mu'][:], f['sigma'][:]
     else:
         path = pathlib.Path(path)
@@ -249,8 +250,8 @@ def compute_statistics_of_path(path, model, batch_size, dims, device,
 
 
 def calculate_fid_given_paths(
-    clean_image_path, 
-    generated_image_path,
+    clean_image_dir, 
+    generated_image_dir,
     batch_size, 
     device, 
     dims, 
@@ -260,10 +261,10 @@ def calculate_fid_given_paths(
     ):
     """Calculates the FID of two paths"""
    
-    if not os.path.exists(clean_image_path):
-        raise RuntimeError('Invalid path: %s' % clean_image_path)
-    if not os.path.exists(generated_image_path):
-        raise RuntimeError('Invalid path: %s' % generated_image_path)
+    if not os.path.exists(clean_image_dir):
+        raise RuntimeError('Invalid path: %s' % clean_image_dir)
+    if not os.path.exists(generated_image_dir):
+        raise RuntimeError('Invalid path: %s' % generated_image_dir)
 
     if dims in [64, 192, 768, 2048]:
         block_idx = InceptionV3.BLOCK_INDEX_BY_DIM[dims]
@@ -272,13 +273,13 @@ def calculate_fid_given_paths(
     elif dims in [1024]:
         model = torch.hub.load("facebookresearch/dinov2", "dinov2_vitl14").to(device)
 
-    m1, s1 = compute_statistics_of_path(clean_image_path, model, batch_size,
+    m1, s1 = compute_statistics_of_path(clean_image_dir, model, batch_size,
                                         dims, device, num_workers, save_stats_dir=save_stats_dir)
     if save_fid_stats and not os.path.exists(f'{save_stats_dir}/clean_image_stats.npz'):
         assert save_stats_dir is not None
         print(f'Saving clean image stats to {save_stats_dir}/clean_image_stats.npz ...')
         np.savez_compressed(f'{save_stats_dir}/clean_image_stats.npz', mu=m1, sigma=s1)
-    m2, s2 = compute_statistics_of_path(generated_image_path, model, batch_size,
+    m2, s2 = compute_statistics_of_path(generated_image_dir, model, batch_size,
                                         dims, device, num_workers)
     fid_value = calculate_frechet_distance(m1, s1, m2, s2)
 
@@ -326,9 +327,12 @@ def main():
                             'The first path is used as input and the second as output.'))
     parser.add_argument('--save-stats-dir', type=str, default=None, 
                         help='Dir to save the stats')
-    parser.add_argument('--path', type=str, nargs=2,
-                        help=('Paths to the generated images or '
-                            'to .npz statistic files'))
+    parser.add_argument('--results-path', type=str, 
+                        default='/media/global_data/fair_neural_compression_data/decoded_rfw/decoded_64x64/fdd.json',
+                        help='Results file path (json)')
+    # parser.add_argument('--path', type=str, nargs=2,
+    #                     help=('Paths to the generated images or '
+    #                         'to .npz statistic files'))
 
     dataset = 'fairface'
     models_to_qualities = {
@@ -336,6 +340,7 @@ def main():
         'mbt2018': ['q_0001', 'q_0009', 'q_1'],
         'hyperprior': ['q_0001', 'q_0009', 'q_1']
     }
+    clean_image_dir = '/media/global_data/fair_neural_compression_data/datasets/RFW/data_64'
     
     args = parser.parse_args()
 
@@ -360,17 +365,30 @@ def main():
     # if args.save_stats:
     #     save_fid_stats(args.save_stats_dir, args.batch_size, device, args.dims, num_workers)
     #     return
-
-    fid_value = calculate_fid_given_paths(
-        args.path,
-        args.batch_size,
-        device,
-        args.dims,
-        num_workers=num_workers, 
-        save_fid_stats=args.save_stats,
-        save_stats_dir=args.save_stats_dir
-    )
-    print('FID: ', fid_value)
+    fid_scores = {}
+    for model in models_to_qualities:
+        fid_scores[model] = {}
+        qualities = models_to_qualities[model]
+        for quality in qualities:
+            print(f'model: {model} - quality: {quality}')
+            generated_image_dir = f'/media/global_data/fair_neural_compression_data/decoded_rfw/decoded_64x64/{model}/{dataset}/{quality}'
+            fid_value = calculate_fid_given_paths(
+                clean_image_dir,
+                generated_image_dir,
+                args.batch_size,
+                device,
+                args.dims,
+                num_workers=num_workers, 
+                save_fid_stats=args.save_stats,
+                save_stats_dir=args.save_stats_dir
+            )
+            fid_scores[model][quality] = fid_value
+            print(f'\tFDD: {fid_value}')
+            print(f'model {model}, quality {quality} done!!')
+            
+    with open(args.results_path, 'w') as json_file:
+        json.dump(fid_scores, json_file, indent=4)        
+    print('RESULTS: ', fid_scores)
 
 
 if __name__ == '__main__':
