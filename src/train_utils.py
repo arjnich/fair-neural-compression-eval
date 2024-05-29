@@ -93,7 +93,8 @@ def save_race_based_predictions(
     return all_predictions, all_labels
 
 def generate_dataloaders(image_path, batch_size, ratio):
-    RFW_LABELS_DIR = "/media/global_data/fair_neural_compression_data/datasets/RFW/clean_metadata/numerical_labels.csv"
+    # RFW_LABELS_DIR = "/media/global_data/fair_neural_compression_data/datasets/RFW/clean_metadata/numerical_labels.csv"
+    RFW_LABELS_DIR = "/media/global_data/fair_neural_compression_data/datasets/RFW/clean_metadata/numerical_labels_sorted.csv"
     return create_dataloaders(
         image_path, 
         RFW_LABELS_DIR, 
