@@ -112,7 +112,9 @@ def get_activations(files, model, batch_size=50, dims=2048, device='cpu',
         batch_size = len(files)
 
     if dims in [64, 192, 768, 2048]:
-        transform = TF.ToTensor()
+        # transform = TF.ToTensor()
+        # hardcoding to resize and centercrop to 64 always for now.
+        transform = TF.Compose([TF.Resize(64), TF.CenterCrop(64), TF.ToTensor(), TF.Lambda(lambda x: x.expand(3, -1, -1))])
     elif dims in [1024]:
         transform = TF.Compose([TF.Resize(518), TF.ToTensor(), TF.Lambda(lambda x: x.expand(3, -1, -1))])
 
@@ -318,8 +320,10 @@ def main():
                             'Defaults to `min(8, num_cpus)`'))
     parser.add_argument('--device', type=str, default=None,
                         help='Device to use. Like cuda, cuda:0 or cpu')
+    parser.add_argument('--clean_dataset', type=str, default=None,
+                        help='name of the clean dataset. Accpets rfw or demogpairs')
     parser.add_argument('--dims', type=int, default=2048,
-                        choices=list([InceptionV3.BLOCK_INDEX_BY_DIM , 1024]),
+                        choices=list(InceptionV3.BLOCK_INDEX_BY_DIM.keys()).append(1024),
                         help=('Dimensionality of Inception features to use. '
                             'By default, uses pool3 features'))
     parser.add_argument('--save-stats', action='store_true',
@@ -336,13 +340,22 @@ def main():
 
     dataset = 'fairface'
     models_to_qualities = {
-        'qres17m_lmb_64': ['1', '3', '6'],
-        'mbt2018': ['q_0001', 'q_0009', 'q_1'],
-        'hyperprior': ['q_0001', 'q_0009', 'q_1']
+        'qres17m_lmb_64': ['1', '3', '6', '9', '12'],
+        'mbt2018'       : ['q_0001', 'q_0009', 'q_1', 'q_2', 'q_3'],
+        'hyperprior'    : ['q_0001', 'q_0009', 'q_1', 'q_2', 'q_3'],
+        'cheng2020-attn': ['q_0001', 'q_0009', 'q_1', 'q_2', 'q_3'],
+        'qarv'          : ['lmb_1', 'lmb_4', 'lmb_8', 'lmb_16', 'lmb_32']
     }
-    clean_image_dir = '/media/global_data/fair_neural_compression_data/datasets/RFW/data_64'
+
+    clean_dataset_dict = {
+        'rfw':'/media/global_data/fair_neural_compression_data/datasets/RFW/data_64',
+        'demogpairs':'/media/global_data/fair_neural_compression_data/datasets/DemogPairs'
+    }
+
     
     args = parser.parse_args()
+    print(args)
+    clean_image_dir = clean_dataset_dict[args.clean_dataset]
 
     if args.device is None:
         device = torch.device('cuda' if (torch.cuda.is_available()) else 'cpu')
