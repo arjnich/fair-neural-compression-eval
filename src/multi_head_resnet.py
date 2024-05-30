@@ -21,5 +21,5 @@ class MultiHeadResNet(nn.Module):
         outputs = {}
         for head, head_module in self.heads.items():
             output_logits = head_module(features)
-            outputs[head] = F.softmax(output_logits, dim=1)
+            outputs[head] = output_logits
         return outputs
