@@ -54,7 +54,7 @@ def parse_args(argv):
     parser.add_argument(
         "-e",
         "--epochs",
-        default=30,
+        default=20,
         type=int,
         help="Number of epochs (default: %(default)s)",
     )
@@ -116,7 +116,7 @@ def main(argv):  # noqa: C901
 
             print(f"Training {attr} Model")
 
-            model,_,_ = train_numerical_rfw(model, torch.optim.SGD, args.epochs, args.learning_rate, train_loader, val_loader, args.device, args.pred_dir, 5)
+            model,_,_ = train_numerical_rfw(model, torch.optim.SGD, args.epochs, args.learning_rate, train_loader, val_loader, args.device, args.pred_dir, attr, 5)
             models.append(model)
     else:
         # TODO: This needs to be fixed

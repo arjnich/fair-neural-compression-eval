@@ -84,16 +84,17 @@ def save_race_based_predictions(
                         all_predictions[race_label][head] = torch.cat((all_predictions[race_label][head], race_predictions.to('cpu')), dim=0)
                         all_labels[race_label][head] = torch.cat((all_labels[race_label][head], race_labels.to('cpu')), dim=0)
 
-    with open(prediction_save_dir + '/test.pkl', 'wb+') as f:
+    with open(prediction_save_dir + '/sep_predictions.pkl', 'wb+') as f:
         pickle.dump(all_predictions, f)
-    #with open(prediction_save_dir + '/labels.pkl', 'wb+') as f:
-    #    pickle.dump(all_labels, f)
+    with open(prediction_save_dir + '/sep_labels.pkl', 'wb+') as f:
+        pickle.dump(all_labels, f)
 
 
     return all_predictions, all_labels
 
 def generate_dataloaders(image_path, batch_size, ratio):
-    RFW_LABELS_DIR = "/media/global_data/fair_neural_compression_data/datasets/RFW/clean_metadata/numerical_labels.csv"
+    # RFW_LABELS_DIR = "/media/global_data/fair_neural_compression_data/datasets/RFW/clean_metadata/numerical_labels.csv"
+    RFW_LABELS_DIR = "/media/global_data/fair_neural_compression_data/datasets/RFW/clean_metadata/numerical_labels_sorted.csv"
     return create_dataloaders(
         image_path, 
         RFW_LABELS_DIR, 
@@ -110,6 +111,7 @@ def train_numerical_rfw(
         valid_loader,
         device,
         save_dir,
+        attr,
         patience=5  # Number of epochs to wait for improvement in validation loss before stopping
     ):
     criterion = nn.CrossEntropyLoss()
@@ -167,12 +169,12 @@ def train_numerical_rfw(
             print(f'Found better model. Best loss: {avg_valid_loss}')
             best_valid_loss = avg_valid_loss
             no_improvement_count = 0
-            print(f'Saving best model to {save_dir}/best.pth')
-            torch.save(model, f'{save_dir}/best.pth')
+            print(f'Saving best model to {save_dir}/{attr}_best.pth')
+            torch.save(model, f'{save_dir}/{attr}_best.pth')
         else:
             no_improvement_count += 1
             if no_improvement_count >= patience:
                 print(f"Early stopping at epoch {epoch+1}")
                 break
-    model = torch.load(f'{save_dir}/best.pth')
+    model = torch.load(f'{save_dir}/{attr}_best.pth')
     return model, train_losses, valid_losses
