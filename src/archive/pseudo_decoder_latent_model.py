@@ -9,6 +9,7 @@ import argparse
 from datasets.rfw_latent import RFW_raw, RFW_latent, create_dataloaders
 from latent_utils import train_numerical_rfw_pseudo_decoder
 from train import save_model
+from detection_models import HierarchicalVAE_ResNet
 
 import sys
 sys.path.append('/home/tianqiu/NeuralCompression/lossy-vae')
@@ -18,11 +19,17 @@ import lvae.models.common as common
 import lvae.models.qresvae.model as qres
 from lvae.models.qresvae.model import BottomUpEncoder, TopDownDecoder, HierarchicalVAE
 
-device = 'cuda'
-model_name = 'qres17m'
-lmb_value = 64
-# nc_model, cfg = get_model(model_name, lmb_value, pretrained=True)
-pretrained_nc_model = zoo.qres17m(lmb=64, pretrained=True)
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--n_keep',  type=int,  default=12)
+    parser.add_argument('--use_pretrained', action='store_true', default=False)
+    parser.add_argument('--epochs',  type=int,  default=100)
+    parser.add_argument('--experiment_tag',  type=str,  default=None)
+    cfg = parser.parse_args()
+    assert cfg.n_keep in [1,3,6,9,12], 'n_keep value not accepted'
+    return cfg
+
+
 
 # copy cfg got qres17m
 def get_qres17m_cfg():
@@ -64,53 +71,6 @@ def get_qres17m_cfg():
     cfg['max_stride'] = 64
     return cfg
 
-class HierarchicalVAE_ResNet(HierarchicalVAE):
-    def __init__(self, config: dict, nc_model, output_dims, use_pretrained):
-        super().__init__(config)
-        # self.encoder = BottomUpEncoder(blocks=config.pop('enc_blocks'))
-        # do not train encoder
-        self.encoder = nc_model.encoder
-        self.decoder = nc_model.decoder
-        for param in self.encoder.parameters():
-            param.requires_grad = False
-        # self.decoder = TopDownDecoder(blocks=config.pop('dec_blocks'))
-        # self.out_net = config.pop('out_net')
-        self.upsampling = nn.Upsample(size=224, mode='nearest')
-        self.resnet = models.resnet18(pretrained=use_pretrained)
-        num_features = self.resnet.fc.in_features
-        self.resnet = torch.nn.Sequential(*(list(self.resnet.children())[:-1]))
-        self.heads = nn.ModuleDict()
-        for head, num_classes in output_dims.items():
-            self.heads[head] = nn.Linear(num_features, num_classes)
-    
-    def forward(self, im):
-        # pass through encoder
-        im = im.to(self._dummy.device)
-        x = self.preprocess_input(im)
-        x_target = self.preprocess_target(im)
-
-        enc_features = self.encoder(x)
-        # pass through decoder
-        feature, stats_all = self.decoder(enc_features)
-        out_loss, x_hat = self.out_net.forward_loss(feature, x_target)
-        im_hat = self.process_output(x_hat)
-
-        # pass through classifier
-        x = self.upsampling(im_hat)
-        # x = self.resnet(x)
-        features = self.resnet(x).squeeze((2,3))
-        outputs = {}
-        for head, head_module in self.heads.items():
-            output_logits = head_module(features)
-            outputs[head] = F.softmax(output_logits, dim=1)
-        return outputs
-
-    def process_output(self, x: torch.Tensor):
-        # overrides parent class method
-        # im_hat = x.clone().clamp_(min=-1.0, max=1.0).mul_(0.5).add_(0.5)
-        # converts the data range back to [0, 1]
-        im_hat = x.clamp_(min=-1.0, max=1.0).mul_(0.5).add_(0.5)
-        return im_hat
 
 output_dims = {
     'skin_type': 6,
@@ -122,8 +82,11 @@ output_dims = {
 }
 
 def main():
-    cfg = get_qres17m_cfg()
-    classifier_model = HierarchicalVAE_ResNet(cfg, pretrained_nc_model, output_dims, True).to(device)
+    cfg = parse_args()
+    qres_cfg = get_qres17m_cfg()
+    device = 'cuda'
+    pretrained_nc_model = zoo.qres17m(lmb=64, pretrained=True)
+    classifier_model = HierarchicalVAE_ResNet(qres_cfg, pretrained_nc_model, output_dims, True).to(device)
     # classifier_model.encoder = pretrained_nc_model.encoder
     # classifier_model.decoder = pretrained_nc_model.decoder
     # print(classifier_model)
@@ -147,9 +110,9 @@ def main():
     #     # print(len(features))
 
     #     # break
-    num_epochs = 100
-    lr = 1e-4
-    experiment_tag = 'pseudo_decoder_debug'
+    num_epochs = cfg.epochs
+    lr = 1e-3
+    experiment_tag = cfg.experiment_tag
     writer = SummaryWriter(f'runs/{experiment_tag}')# initialize a writer
 
     model, ending_epoch, train_losses, val_losses = train_numerical_rfw_pseudo_decoder(
