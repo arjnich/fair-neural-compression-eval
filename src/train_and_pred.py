@@ -1,6 +1,7 @@
 import sys
 import argparse
 import torch
+import os
 
 from train_utils import create_model, generate_dataloaders, train_numerical_rfw, save_model, save_race_based_predictions, MultiHeadResNet, DEFAULT_OUTPUT_DIMS
 
@@ -9,20 +10,21 @@ def parse_args(argv):
     # Common options.
     parser = argparse.ArgumentParser(description="Example training script.")
 
+    # --model-dir is the directory of the trained checkpoints. 
     parser.add_argument(
-        "-mp",
-        "--model-path",
-        dest="checkpoint_path",
-        default="../models/RFW_numerical_all_labels_resnet18_2024-05-07_13-45-45.pth",
+        "-md",
+        "--model-dir",
+        dest="checkpoint_dir",
+        default="/media/global_data/fair_neural_compression_data/predictions/hyperprior/celebA/clean",
         type=str,
-        nargs="*",
         required=False,
-        help="model path",
+        help="dir of all the pretrained model path",
     )
 
     parser.add_argument(
         "-t",
         "--train",
+        action="store_true",
         default=False,
         help="train new model (default: %(default)s)",
     )
@@ -98,7 +100,11 @@ def parse_args(argv):
     
 def main(argv):  # noqa: C901
     args = parse_args(argv)
-
+    print(args)
+    # check pretrained model dir exsits. 
+    if args.train==False:
+        assert os.path.isdir(args.checkpoint_dir), 'checkpoint dir does not exist'
+ 
     train_loader, val_loader, test_loader = generate_dataloaders(args.data_path, args.batch_size, args.ratio)
 
     ###model = create_model(args.device)
@@ -119,12 +125,22 @@ def main(argv):  # noqa: C901
             model,_,_ = train_numerical_rfw(model, torch.optim.SGD, args.epochs, args.learning_rate, train_loader, val_loader, args.device, args.pred_dir, attr, 5)
             models.append(model)
     else:
-        # TODO: This needs to be fixed
-        print("Loading Model")
-        ##print(args.checkpoint_path)
-        model = torch.load(args.checkpoint_path[0])
-        model.to(args.device)
+        attributes = DEFAULT_OUTPUT_DIMS.keys()
+        print(attributes)
+        for attr in attributes:
+            output_dims = {attr: DEFAULT_OUTPUT_DIMS[attr]}
+            model = create_model(
+                args.device, 
+                output_dims
+                )
+            print(f"Loading {attr} Model")
+            checkpoint_path = os.path.join(args.checkpoint_dir, attr+'_best.pth')
+            model = torch.load(checkpoint_path)
+            model.to(args.device)
+            models.append(model) 
+        print(models)  
     print(args.pred_dir)
+    return 
 
     save_race_based_predictions(
             models, 
