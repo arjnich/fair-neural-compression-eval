@@ -29,12 +29,12 @@ def parse_args(argv):
         help="train new model (default: %(default)s)",
     )
 
-    parser.add_argument(
-        "--save-model", 
-        #action="store_true", 
-        default=True, 
-        help="Save model to disk (default: %(default)s)"
-    )
+    # parser.add_argument(
+    #     "--save-model", 
+    #     #action="store_true", 
+    #     default=True, 
+    #     help="Save model to disk (default: %(default)s)"
+    # )
 
     parser.add_argument(
         "--data-path",
@@ -47,11 +47,11 @@ def parse_args(argv):
         default=".",
         help="Path to directory to write predictions")
 
-    parser.add_argument(
-        "--save-model-path", 
-        default=".",
-        help="Path to save newly trained model"
-    )
+    # parser.add_argument(
+    #     "--save-model-path", 
+    #     default=".",
+    #     help="Path to save newly trained model"
+    # )
 
     parser.add_argument(
         "-e",
@@ -137,10 +137,9 @@ def main(argv):  # noqa: C901
             checkpoint_path = os.path.join(args.checkpoint_dir, attr+'_best.pth')
             model = torch.load(checkpoint_path)
             model.to(args.device)
-            models.append(model) 
-        print(models)  
+            models.append(model)  
     print(args.pred_dir)
-    return 
+ 
 
     save_race_based_predictions(
             models, 
